@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Chatbot Architecture — How Memory Works</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0a0a0f;
+      --bg-card: #12121a;
+      --bg-card-hover: #1a1a28;
+      --accent-cyan: #00e5ff;
+      --accent-purple: #b388ff;
+      --accent-green: #69f0ae;
+      --accent-orange: #ffab40;
+      --accent-red: #ff5252;
+      --text-primary: #e8e8f0;
+      --text-secondary: #8888aa;
+      --text-dim: #555570;
+      --border: #1e1e30;
+      --glow-cyan: rgba(0, 229, 255, 0.15);
+      --glow-purple: rgba(179, 136, 255, 0.15);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: 'Outfit', sans-serif;
+      line-height: 1.7;
+      overflow-x: hidden;
+    }
+
+    .mono { font-family: 'Space Mono', monospace; }
+
+    /* ── Hero Section ── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, var(--glow-cyan) 0%, transparent 70%);
+      top: -200px; right: -100px;
+      animation: float 8s ease-in-out infinite;
+    }
+
+    .hero::after {
+      content: '';
+      position: absolute;
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, var(--glow-purple) 0%, transparent 70%);
+      bottom: -200px; left: -100px;
+      animation: float 10s ease-in-out infinite reverse;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translate(0, 0); }
+      50% { transform: translate(30px, -40px); }
+    }
+
+    .hero-badge {
+      display: inline-block;
+      padding: 6px 16px;
+      border: 1px solid var(--accent-cyan);
+      border-radius: 50px;
+      font-size: 0.75rem;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--accent-cyan);
+      margin-bottom: 2rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero h1 {
+      font-size: clamp(2.5rem, 6vw, 5rem);
+      font-weight: 800;
+      line-height: 1.1;
+      margin-bottom: 1.5rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero h1 .highlight-cyan { color: var(--accent-cyan); }
+    .hero h1 .highlight-purple { color: var(--accent-purple); }
+
+    .hero p {
+      font-size: 1.15rem;
+      color: var(--text-secondary);
+      max-width: 600px;
+      margin-bottom: 3rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .scroll-indicator {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-dim);
+      font-size: 0.8rem;
+      letter-spacing: 2px;
+      animation: bounce 2s infinite;
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(10px); }
+    }
+
+    /* ── Section Styling ── */
+    section {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 6rem 2rem;
+    }
+
+    .section-number {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--accent-cyan);
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+    }
+
+    .section-title {
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-weight: 700;
+      margin-bottom: 1rem;
+    }
+
+    .section-subtitle {
+      color: var(--text-secondary);
+      font-size: 1.05rem;
+      max-width: 700px;
+      margin-bottom: 3rem;
+    }
+
+    /* ── Flow Diagram ── */
+    .flow-container {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      position: relative;
+    }
+
+    .flow-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 24px;
+      padding: 1.5rem 0;
+      opacity: 0;
+      transform: translateX(-20px);
+      animation: slideIn 0.5s ease forwards;
+    }
+
+    .flow-step:nth-child(1) { animation-delay: 0.1s; }
+    .flow-step:nth-child(2) { animation-delay: 0.2s; }
+    .flow-step:nth-child(3) { animation-delay: 0.3s; }
+    .flow-step:nth-child(4) { animation-delay: 0.4s; }
+    .flow-step:nth-child(5) { animation-delay: 0.5s; }
+    .flow-step:nth-child(6) { animation-delay: 0.6s; }
+
+    @keyframes slideIn {
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    .flow-line {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 48px;
+    }
+
+    .flow-dot {
+      width: 48px; height: 48px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.85rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .flow-dot.cyan { background: rgba(0,229,255,0.15); color: var(--accent-cyan); border: 2px solid var(--accent-cyan); }
+    .flow-dot.purple { background: rgba(179,136,255,0.15); color: var(--accent-purple); border: 2px solid var(--accent-purple); }
+    .flow-dot.green { background: rgba(105,240,174,0.15); color: var(--accent-green); border: 2px solid var(--accent-green); }
+    .flow-dot.orange { background: rgba(255,171,64,0.15); color: var(--accent-orange); border: 2px solid var(--accent-orange); }
+
+    .flow-connector {
+      width: 2px;
+      height: 100%;
+      min-height: 20px;
+      background: var(--border);
+      flex-grow: 1;
+    }
+
+    .flow-content h3 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .flow-content p {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+    }
+
+    .flow-content .tech-tag {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-family: 'Space Mono', monospace;
+      margin-top: 6px;
+      margin-right: 4px;
+    }
+
+    .tech-tag.mongo { background: rgba(105,240,174,0.12); color: var(--accent-green); }
+    .tech-tag.pinecone { background: rgba(179,136,255,0.12); color: var(--accent-purple); }
+    .tech-tag.gemini { background: rgba(0,229,255,0.12); color: var(--accent-cyan); }
+    .tech-tag.express { background: rgba(255,171,64,0.12); color: var(--accent-orange); }
+
+    /* ── Comparison Cards ── */
+    .compare-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin-top: 2rem;
+    }
+
+    @media (max-width: 768px) { .compare-grid { grid-template-columns: 1fr; } }
+
+    .compare-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2rem;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .compare-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+    }
+
+    .compare-card.short::before { background: linear-gradient(90deg, var(--accent-cyan), transparent); }
+    .compare-card.long::before { background: linear-gradient(90deg, var(--accent-purple), transparent); }
+
+    .compare-card:hover {
+      border-color: var(--text-dim);
+      transform: translateY(-2px);
+    }
+
+    .compare-card h3 {
+      font-size: 1.2rem;
+      margin-bottom: 0.3rem;
+    }
+
+    .compare-card .card-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 1rem;
+    }
+
+    .compare-card.short .card-label { color: var(--accent-cyan); }
+    .compare-card.long .card-label { color: var(--accent-purple); }
+
+    .compare-card ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .compare-card li {
+      color: var(--text-secondary);
+      font-size: 0.92rem;
+      padding-left: 18px;
+      position: relative;
+    }
+
+    .compare-card li::before {
+      content: '›';
+      position: absolute;
+      left: 0;
+      font-weight: 700;
+    }
+
+    .compare-card.short li::before { color: var(--accent-cyan); }
+    .compare-card.long li::before { color: var(--accent-purple); }
+
+    /* ── Interactive Demo ── */
+    .demo-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      margin-top: 2rem;
+    }
+
+    .demo-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,0.02);
+    }
+
+    .demo-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+    }
+
+    .demo-dot.red { background: var(--accent-red); }
+    .demo-dot.orange { background: var(--accent-orange); }
+    .demo-dot.green { background: var(--accent-green); }
+
+    .demo-title {
+      margin-left: 8px;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      font-family: 'Space Mono', monospace;
+    }
+
+    .demo-body {
+      padding: 24px;
+    }
+
+    .demo-chat {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .demo-msg {
+      max-width: 80%;
+      padding: 12px 18px;
+      border-radius: 16px;
+      font-size: 0.92rem;
+      line-height: 1.5;
+      opacity: 0;
+      animation: msgAppear 0.4s ease forwards;
+    }
+
+    @keyframes msgAppear {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .demo-msg.user {
+      align-self: flex-end;
+      background: rgba(0,229,255,0.1);
+      border: 1px solid rgba(0,229,255,0.2);
+      color: var(--text-primary);
+    }
+
+    .demo-msg.model {
+      align-self: flex-start;
+      background: var(--bg-card-hover);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+    }
+
+    .demo-msg .typing {
+      display: inline-block;
+    }
+
+    .demo-msg .typing span {
+      display: inline-block;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--text-dim);
+      margin-right: 4px;
+      animation: typingDot 1.4s infinite;
+    }
+
+    .demo-msg .typing span:nth-child(2) { animation-delay: 0.2s; }
+    .demo-msg .typing span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes typingDot {
+      0%, 100% { opacity: 0.3; transform: translateY(0); }
+      50% { opacity: 1; transform: translateY(-4px); }
+    }
+
+    .demo-controls {
+      display: flex;
+      gap: 8px;
+      padding: 16px 24px;
+      border-top: 1px solid var(--border);
+    }
+
+    .demo-btn {
+      padding: 8px 20px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-primary);
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .demo-btn:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+      background: rgba(0,229,255,0.05);
+    }
+
+    .demo-btn.active {
+      background: rgba(0,229,255,0.1);
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    /* ── Code Blocks ── */
+    .code-block {
+      background: #0d0d14;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin: 1.5rem 0;
+    }
+
+    .code-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,0.02);
+    }
+
+    .code-lang {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--accent-cyan);
+      letter-spacing: 1px;
+    }
+
+    .code-file {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--text-dim);
+    }
+
+    .code-body {
+      padding: 16px 20px;
+      overflow-x: auto;
+    }
+
+    .code-body pre {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.78rem;
+      line-height: 1.8;
+      color: var(--text-secondary);
+    }
+
+    .code-body .kw { color: var(--accent-purple); }
+    .code-body .fn { color: var(--accent-cyan); }
+    .code-body .str { color: var(--accent-green); }
+    .code-body .cmt { color: var(--text-dim); font-style: italic; }
+    .code-body .num { color: var(--accent-orange); }
+
+    /* ── Streaming Visual ── */
+    .stream-visual {
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+      margin-top: 2rem;
+    }
+
+    .stream-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .stream-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      min-width: 100px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .stream-blocks {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+
+    .stream-block {
+      padding: 6px 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.85rem;
+      opacity: 0;
+      animation: blockAppear 0.3s ease forwards;
+    }
+
+    .stream-block.highlight {
+      border-color: var(--accent-cyan);
+      background: rgba(0,229,255,0.08);
+      color: var(--accent-cyan);
+    }
+
+    /* ── Divider ── */
+    .divider {
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+      margin: 2rem 0;
+    }
+
+    /* ── API Route Table ── */
+    .route-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1.5rem;
+    }
+
+    .route-table th {
+      text-align: left;
+      padding: 12px 16px;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--text-dim);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .route-table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(30,30,48,0.5);
+      font-size: 0.9rem;
+    }
+
+    .route-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+    .method-badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 4px;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
+    .method-badge.post { background: rgba(0,229,255,0.12); color: var(--accent-cyan); }
+    .method-badge.get { background: rgba(105,240,174,0.12); color: var(--accent-green); }
+    .method-badge.delete { background: rgba(255,82,82,0.12); color: var(--accent-red); }
+
+    .route-path {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.82rem;
+      color: var(--text-primary);
+    }
+
+    .route-desc { color: var(--text-secondary); }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--text-dim);
+      font-size: 0.85rem;
+      border-top: 1px solid var(--border);
+    }
+
+    footer a {
+      color: var(--accent-cyan);
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- HERO -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="hero">
+    <span class="hero-badge mono">Architecture Guide</span>
+    <h1>
+      AI Chatbot with<br>
+      <span class="highlight-cyan">Memory</span> &
+      <span class="highlight-purple">Streaming</span>
+    </h1>
+    <p>
+      A production-grade chatbot that remembers past conversations using RAG,
+      streams responses in real-time via SSE, and adapts personality through
+      role-based system prompts — built with TypeScript, Gemini, and Pinecone.
+    </p>
+    <div class="scroll-indicator">
+      <span class="mono">SCROLL TO EXPLORE</span>
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 4v12M5 11l5 5 5-5"/></svg>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- SECTION 1: THE BIG PICTURE -->
+  <!-- ═══════════════════════════════════════ -->
+  <section>
+    <div class="section-number mono">01 — The Big Picture</div>
+    <h2 class="section-title">How the AI Thinks</h2>
+    <p class="section-subtitle">
+      Every time a user sends a message, the backend orchestrates a 6-step
+      pipeline that combines recent context, long-term memory, and AI generation
+      to produce an intelligent, context-aware response.
+    </p>
+
+    <div class="flow-container">
+      <div class="flow-step">
+        <div class="flow-line">
+          <div class="flow-dot cyan">01</div>
+          <div class="flow-connector"></div>
+        </div>
+        <div class="flow-content">
+          <h3>User Sends Message</h3>
+          <p>The message arrives via POST request to our Express API. JWT middleware verifies the user's identity. Rate limiter checks if they're within their 20 messages/minute quota.</p>
+          <span class="tech-tag express">Express.js</span>
+          <span class="tech-tag express">JWT</span>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="flow-line">
+          <div class="flow-dot cyan">02</div>
+          <div class="flow-connector"></div>
+        </div>
+        <div class="flow-content">
+          <h3>Load Short-Term Memory</h3>
+          <p>Fetch the last 20 messages from this conversation in MongoDB. This is the "working memory" — what's currently being discussed. Like keeping the last few pages of a book open.</p>
+          <span class="tech-tag mongo">MongoDB</span>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="flow-line">
+          <div class="flow-dot purple">03</div>
+          <div class="flow-connector"></div>
+        </div>
+        <div class="flow-content">
+          <h3>Search Long-Term Memory (RAG)</h3>
+          <p>Convert the user's message into an embedding (array of 768 numbers) using Gemini's embedding model, then search Pinecone for similar past conversation chunks. Only results with similarity score ≥ 0.7 are used — irrelevant memories are filtered out.</p>
+          <span class="tech-tag gemini">Gemini Embedding</span>
+          <span class="tech-tag pinecone">Pinecone</span>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="flow-line">
+          <div class="flow-dot green">04</div>
+          <div class="flow-connector"></div>
+        </div>
+        <div class="flow-content">
+          <h3>Build Context & System Prompt</h3>
+          <p>Combine the role-based system prompt (assistant / coder / teacher / creative) with any relevant long-term memories, then attach the recent message history. This assembled context is what makes the AI's response smart and personalized.</p>
+          <span class="tech-tag gemini">Prompt Engineering</span>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="flow-line">
+          <div class="flow-dot orange">05</div>
+          <div class="flow-connector"></div>
+        </div>
+        <div class="flow-content">
+          <h3>Generate Response (Stream or Full)</h3>
+          <p>Send the assembled context to Gemini 2.5 Flash. In streaming mode, words appear in real-time via Server-Sent Events (SSE). In normal mode, the full response is returned as JSON. The streaming connection stays open until generation completes.</p>
+          <span class="tech-tag gemini">Gemini 2.5 Flash</span>
+          <span class="tech-tag express">SSE</span>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="flow-line">
+          <div class="flow-dot cyan">06</div>
+        </div>
+        <div class="flow-content">
+          <h3>Save & Archive</h3>
+          <p>Both the user's message and AI's response are saved to MongoDB. If the conversation now has more than 20 messages, older messages are asynchronously archived to Pinecone (long-term memory) in the background — the user doesn't wait for this.</p>
+          <span class="tech-tag mongo">MongoDB</span>
+          <span class="tech-tag pinecone">Pinecone</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- SECTION 2: MEMORY SYSTEM -->
+  <!-- ═══════════════════════════════════════ -->
+  <section>
+    <div class="section-number mono">02 — Memory System</div>
+    <h2 class="section-title">Two Types of Memory</h2>
+    <p class="section-subtitle">
+      Just like humans have working memory (what you're thinking about right now)
+      and long-term memory (facts you recall from the past), this chatbot uses
+      two complementary memory systems.
+    </p>
+
+    <div class="compare-grid">
+      <div class="compare-card short">
+        <div class="card-label mono">Short-Term Memory</div>
+        <h3>Recent Conversation</h3>
+        <ul>
+          <li>Last 20 messages from current chat</li>
+          <li>Stored in MongoDB (fast reads)</li>
+          <li>Sent directly to Gemini with each request</li>
+          <li>Like keeping a notepad open while talking</li>
+          <li>Always available, no search needed</li>
+          <li>Gives immediate conversational context</li>
+        </ul>
+      </div>
+
+      <div class="compare-card long">
+        <div class="card-label mono">Long-Term Memory</div>
+        <h3>Past Conversations (RAG)</h3>
+        <ul>
+          <li>Older messages archived as embeddings</li>
+          <li>Stored in Pinecone vector database</li>
+          <li>Searched only when relevant to current query</li>
+          <li>Like remembering something from weeks ago</li>
+          <li>Requires similarity search (RAG pattern)</li>
+          <li>Enables "the AI remembers me" experience</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header">
+        <span class="code-lang">TYPESCRIPT</span>
+        <span class="code-file">memory.service.ts — The Archive Trigger</span>
+      </div>
+      <div class="code-body">
+<pre><span class="cmt">// When conversation exceeds 20 messages...</span>
+<span class="kw">const</span> totalMessages = conversation.messageCount + <span class="num">2</span>;
+
+<span class="kw">if</span> (totalMessages > <span class="num">20</span>) {
+  <span class="cmt">// Archive old messages to Pinecone in the BACKGROUND</span>
+  <span class="cmt">// User doesn't wait for this — chat stays fast</span>
+  <span class="fn">archiveToLongTermMemory</span>(conversationId, userId)
+    .<span class="fn">catch</span>(err => console.<span class="fn">error</span>(<span class="str">"Archive failed:"</span>, err));
+}</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- SECTION 3: STREAMING -->
+  <!-- ═══════════════════════════════════════ -->
+  <section>
+    <div class="section-number mono">03 — Streaming (SSE)</div>
+    <h2 class="section-title">Real-Time Responses</h2>
+    <p class="section-subtitle">
+      Instead of waiting 5-10 seconds for a complete response, streaming sends
+      each word as it's generated. The technical mechanism is Server-Sent Events (SSE)
+      — a persistent HTTP connection where the server pushes data to the client.
+    </p>
+
+    <div class="demo-box">
+      <div class="demo-header">
+        <div class="demo-dot red"></div>
+        <div class="demo-dot orange"></div>
+        <div class="demo-dot green"></div>
+        <span class="demo-title">streaming-demo.ts</span>
+      </div>
+      <div class="demo-body">
+        <div class="demo-chat" id="streamDemo">
+          <div class="demo-msg user">Explain how SSE streaming works in this project</div>
+        </div>
+      </div>
+      <div class="demo-controls">
+        <button class="demo-btn" id="playStream" onclick="playStreamDemo()">
+          ▶ Play Streaming Demo
+        </button>
+        <button class="demo-btn" id="resetStream" onclick="resetStreamDemo()">
+          ↻ Reset
+        </button>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header">
+        <span class="code-lang">TYPESCRIPT</span>
+        <span class="code-file">chat.service.ts — SSE Setup</span>
+      </div>
+      <div class="code-body">
+<pre><span class="cmt">// These 3 headers are what make SSE work:</span>
+res.<span class="fn">setHeader</span>(<span class="str">'Content-Type'</span>, <span class="str">'text/event-stream'</span>);  <span class="cmt">// I'll send events</span>
+res.<span class="fn">setHeader</span>(<span class="str">'Cache-Control'</span>, <span class="str">'no-cache'</span>);          <span class="cmt">// Don't cache this</span>
+res.<span class="fn">setHeader</span>(<span class="str">'Connection'</span>, <span class="str">'keep-alive'</span>);            <span class="cmt">// Stay connected</span>
+
+<span class="cmt">// Stream from Gemini → pipe to client word by word</span>
+<span class="kw">const</span> stream = <span class="kw">await</span> ai.models.<span class="fn">generateContentStream</span>({...});
+
+<span class="kw">for await</span> (<span class="kw">const</span> chunk <span class="kw">of</span> stream) {
+  res.<span class="fn">write</span>(<span class="str">`data: ${JSON.stringify({ content: chunk.text })}\n\n`</span>);
+}
+
+res.<span class="fn">end</span>();  <span class="cmt">// Done — close the connection</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- SECTION 4: ROLE-BASED RESPONSES -->
+  <!-- ═══════════════════════════════════════ -->
+  <section>
+    <div class="section-number mono">04 — Role System</div>
+    <h2 class="section-title">Same AI, Different Personalities</h2>
+    <p class="section-subtitle">
+      Role-based responses are controlled entirely through the system prompt —
+      the instruction given to the AI before any conversation. Same model,
+      different instructions, completely different behavior.
+    </p>
+
+    <div class="compare-grid">
+      <div class="compare-card short">
+        <div class="card-label mono" style="color: var(--accent-green)">🤖 Coder Role</div>
+        <h3>System Prompt</h3>
+        <ul>
+          <li>"You are an expert software developer"</li>
+          <li>Always provides code examples</li>
+          <li>Uses markdown code blocks</li>
+          <li>Suggests best practices</li>
+        </ul>
+      </div>
+
+      <div class="compare-card long">
+        <div class="card-label mono" style="color: var(--accent-orange)">📚 Teacher Role</div>
+        <h3>System Prompt</h3>
+        <ul>
+          <li>"You are a patient, encouraging teacher"</li>
+          <li>Uses analogies and simple examples</li>
+          <li>Breaks down complex topics step-by-step</li>
+          <li>Checks understanding with questions</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- SECTION 5: API ROUTES -->
+  <!-- ═══════════════════════════════════════ -->
+  <section>
+    <div class="section-number mono">05 — API Endpoints</div>
+    <h2 class="section-title">Route Architecture</h2>
+    <p class="section-subtitle">
+      Clean REST API design with 3 resource groups: auth, conversations, and messages.
+    </p>
+
+    <table class="route-table">
+      <thead>
+        <tr>
+          <th>Method</th>
+          <th>Endpoint</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="method-badge post">POST</span></td>
+          <td class="route-path mono">/api/auth/register</td>
+          <td class="route-desc">Create new user account</td>
+        </tr>
+        <tr>
+          <td><span class="method-badge post">POST</span></td>
+          <td class="route-path mono">/api/auth/login</td>
+          <td class="route-desc">Login and receive JWT token</td>
+        </tr>
+        <tr>
+          <td><span class="method-badge post">POST</span></td>
+          <td class="route-path mono">/api/chat/conversations</td>
+          <td class="route-desc">Create new conversation (with role selection)</td>
+        </tr>
+        <tr>
+          <td><span class="method-badge get">GET</span></td>
+          <td class="route-path mono">/api/chat/conversations</td>
+          <td class="route-desc">List all user conversations</td>
+        </tr>
+        <tr>
+          <td><span class="method-badge get">GET</span></td>
+          <td class="route-path mono">/api/chat/conversations/:id</td>
+          <td class="route-desc">Get single conversation details</td>
+        </tr>
+        <tr>
+          <td><span class="method-badge delete">DEL</span></td>
+          <td class="route-path mono">/api/chat/conversations/:id</td>
+          <td class="route-desc">Delete conversation and its messages</td>
+        </tr>
+        <tr>
+          <td><span class="method-badge get">GET</span></td>
+          <td class="route-path mono">/api/chat/conversations/:id/messages</td>
+          <td class="route-desc">Get all messages in a conversation</td>
+        </tr>
+        <tr>
+          <td><span class="method-badge post">POST</span></td>
+          <td class="route-path mono">/api/chat/conversations/:id/messages</td>
+          <td class="route-desc">Send message (stream: true for SSE)</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- SECTION 6: TECH STACK -->
+  <!-- ═══════════════════════════════════════ -->
+  <section>
+    <div class="section-number mono">06 — Tech Stack</div>
+    <h2 class="section-title">What Powers This</h2>
+    <p class="section-subtitle">
+      Each technology was chosen for a specific reason — not just because it's popular.
+    </p>
+
+    <div class="code-block">
+      <div class="code-header">
+        <span class="code-lang">STACK</span>
+        <span class="code-file">Why each piece exists</span>
+      </div>
+      <div class="code-body">
+<pre><span class="fn">TypeScript</span>    <span class="cmt">→ Catches bugs before runtime. Types = documentation.</span>
+<span class="fn">Express.js</span>   <span class="cmt">→ Lightweight HTTP server. SSE support built-in.</span>
+<span class="fn">MongoDB</span>      <span class="cmt">→ Flexible schema for messages. Fast reads for short-term memory.</span>
+<span class="fn">Pinecone</span>     <span class="cmt">→ Vector DB for similarity search. The "long-term memory" engine.</span>
+<span class="fn">Gemini 2.5</span>   <span class="cmt">→ Chat model. Fast, capable, cost-effective. Supports streaming.</span>
+<span class="fn">Gemini Emb.</span>  <span class="cmt">→ Embedding model. Converts text to 768-dim vectors for search.</span>
+<span class="fn">JWT</span>          <span class="cmt">→ Stateless auth. Each user's data stays private.</span>
+<span class="fn">Rate Limit</span>   <span class="cmt">→ Prevents API abuse. 20 msgs/min per user.</span>
+<span class="fn">Docker</span>       <span class="cmt">→ Consistent deployment. "It works on my machine" → works everywhere.</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>
+      Built by <strong>Fzee-Tech</strong> — AI Chatbot with Memory Architecture Guide
+      <br>
+      <span style="color: var(--text-dim); font-size: 0.8rem;">
+        Powered by Google Gemini &middot; TypeScript &middot; Pinecone &middot; MongoDB
+      </span>
+    </p>
+  </footer>
+
+  <script>
+    // ── Streaming Demo ──
+    const streamText = "SSE works by keeping the HTTP connection open. Instead of res.json() which sends once and closes, we use res.write() to send each word as Gemini generates it. The client receives 'data:' events in real-time. Think of it like a live TV broadcast vs downloading a video file.";
+    const words = streamText.split(' ');
+    let streamInterval;
+
+    function playStreamDemo() {
+      const chat = document.getElementById('streamDemo');
+      const btn = document.getElementById('playStream');
+      btn.classList.add('active');
+      btn.disabled = true;
+
+      const aiMsg = document.createElement('div');
+      aiMsg.className = 'demo-msg model';
+      aiMsg.textContent = '';
+      chat.appendChild(aiMsg);
+
+      let i = 0;
+      streamInterval = setInterval(() => {
+        if (i < words.length) {
+          aiMsg.textContent += (i === 0 ? '' : ' ') + words[i];
+          chat.scrollTop = chat.scrollHeight;
+          i++;
+        } else {
+          clearInterval(streamInterval);
+          btn.classList.remove('active');
+
+          const doneMsg = document.createElement('div');
+          doneMsg.style.cssText = 'font-family: Space Mono, monospace; font-size: 0.72rem; color: #69f0ae; padding: 6px 12px; text-align: center;';
+          doneMsg.textContent = '✓ Stream complete — connection closed';
+          chat.appendChild(doneMsg);
+        }
+      }, 60);
+    }
+
+    function resetStreamDemo() {
+      clearInterval(streamInterval);
+      const chat = document.getElementById('streamDemo');
+      chat.innerHTML = '<div class="demo-msg user">Explain how SSE streaming works in this project</div>';
+      const btn = document.getElementById('playStream');
+      btn.classList.remove('active');
+      btn.disabled = false;
+    }
+  </script>
+</body>
+</html>
