@@ -110,10 +110,11 @@ const PORT = process.env.PORT || 3000;
  * If MongoDB connection fails, connectDB() calls process.exit(1)
  * and the server never starts — this is intentional.
  */
-const startServer = async () => {
-  // Connect to MongoDB first — no point starting the server without a database
-  await connectDB();
+// Connect to MongoDB — needed for both local and Vercel serverless
+// On Vercel, this runs once per cold start; on local, it runs at startup
+connectDB();
 
+const startServer = async () => {
   // Start listening for HTTP requests
   app.listen(PORT, () => {
     console.log(`
@@ -127,8 +128,11 @@ const startServer = async () => {
   });
 };
 
-// Call the async startup function
-startServer();
+// Only start the HTTP server when NOT running on Vercel (serverless)
+// Vercel imports the app directly — it doesn't need app.listen()
+if (!process.env.VERCEL) {
+  startServer();
+}
 
-// Export the app instance (useful for testing with supertest)
+// Export the app instance (used by Vercel serverless + testing with supertest)
 export default app;

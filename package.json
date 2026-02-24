@@ -5,6 +5,7 @@
   "main": "dist/app.js",
   "scripts": {
     "build": "tsc",
+    "vercel-build": "npm run build",
     "start": "node dist/app.js",
     "dev": "nodemon --watch src --ext ts --exec ts-node src/app.ts"
   },
