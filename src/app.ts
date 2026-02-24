@@ -49,9 +49,17 @@ const app = express();
 // ── Global Middleware ────────────────────────────────────────
 
 // CORS (Cross-Origin Resource Sharing)
-// Allows your frontend (e.g., localhost:3001) to make requests to this API (localhost:3000)
-// Without CORS, browsers block requests between different origins (domains/ports)
-app.use(cors());
+// Only allows requests from origins listed in ALLOWED_ORIGINS env var
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(",")
+  : ["http://localhost:5173"];
+
+app.use(
+  cors({
+    origin: allowedOrigins,
+    credentials: true,
+  })
+);
 
 // JSON body parser — parses incoming JSON request bodies
 // limit: "10mb" allows larger payloads (default is 100kb)
