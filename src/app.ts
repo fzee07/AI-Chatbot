@@ -58,8 +58,13 @@ app.use(
   cors({
     origin: allowedOrigins,
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
+
+// Handle preflight requests explicitly
+app.options("*", cors({ origin: allowedOrigins, credentials: true }));
 
 // JSON body parser — parses incoming JSON request bodies
 // limit: "10mb" allows larger payloads (default is 100kb)
