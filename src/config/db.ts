@@ -24,23 +24,40 @@
 
 import mongoose from "mongoose";
 
+// Cache the connection promise so we don't reconnect on every serverless invocation
+let cached: Promise<typeof mongoose> | null = null;
+
 /**
  * Connect to MongoDB using the URI from environment variables.
  *
- * This function is called once when the server starts (in app.ts).
- * If the connection fails, the process exits with code 1 because
- * the app cannot function without a database.
+ * Uses a cached promise so that:
+ * - On local: connects once at startup
+ * - On Vercel serverless: reuses the connection across warm invocations
+ *   and only reconnects on cold starts
+ *
+ * Does NOT call process.exit() — on Vercel that would kill the function.
+ * Instead, it throws so the request gets a proper error response.
  */
 const connectDB = async (): Promise<void> => {
+  // Already connected — skip
+  if (mongoose.connection.readyState === 1) return;
+
+  if (!cached) {
+    cached = mongoose.connect(process.env.MONGODB_URI as string);
+  }
+
   try {
-    // mongoose.connect() returns a connection object with useful info
-    // We use `as string` because TypeScript doesn't know .env values exist at compile time
-    const conn = await mongoose.connect(process.env.MONGODB_URI as string);
+    const conn = await cached;
     console.log(`MongoDB Connected: ${conn.connection.host}`);
   } catch (error: any) {
+    cached = null; // Reset so next call retries
     console.error(`MongoDB Connection Error: ${error.message}`);
-    // process.exit(1) = exit with failure code
-    // We exit because without a DB, the app is useless
+
+    // On Vercel, don't kill the process — let the request fail gracefully
+    if (process.env.VERCEL) {
+      throw error;
+    }
+    // Locally, exit since the app is useless without a DB
     process.exit(1);
   }
 };

@@ -63,9 +63,6 @@ app.use(
   })
 );
 
-// Handle preflight requests explicitly
-app.options("*", cors({ origin: allowedOrigins, credentials: true }));
-
 // JSON body parser — parses incoming JSON request bodies
 // limit: "10mb" allows larger payloads (default is 100kb)
 // After this middleware, you can access req.body as a JavaScript object
@@ -74,6 +71,19 @@ app.use(express.json({ limit: "10mb" }));
 // URL-encoded parser — parses form data (application/x-www-form-urlencoded)
 // extended: true allows nested objects in form data
 app.use(express.urlencoded({ extended: true }));
+
+// ── Database Connection Middleware ───────────────────────────
+// Ensures MongoDB is connected before handling any API request.
+// On Vercel serverless, this runs per-request (cached after first connect).
+// CORS and OPTIONS are handled above — they don't need the DB.
+app.use("/api", async (_req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (error) {
+    res.status(503).json({ success: false, message: "Database connection failed" });
+  }
+});
 
 // ── Route Registration ──────────────────────────────────────
 // app.use(path, middleware, router) mounts a router at a URL prefix
@@ -123,11 +133,8 @@ const PORT = process.env.PORT || 3000;
  * If MongoDB connection fails, connectDB() calls process.exit(1)
  * and the server never starts — this is intentional.
  */
-// Connect to MongoDB — needed for both local and Vercel serverless
-// On Vercel, this runs once per cold start; on local, it runs at startup
-connectDB();
-
 const startServer = async () => {
+  await connectDB();
   // Start listening for HTTP requests
   app.listen(PORT, () => {
     console.log(`
