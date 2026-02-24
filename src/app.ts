@@ -37,7 +37,6 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import express from "express";
-import cors from "cors";
 import connectDB from "./config/db";
 import authRoutes from "./modules/auth/auth.routes";
 import chatRoutes from "./modules/chat/chat.routes";
@@ -48,20 +47,30 @@ const app = express();
 
 // ── Global Middleware ────────────────────────────────────────
 
-// CORS (Cross-Origin Resource Sharing)
-// Only allows requests from origins listed in ALLOWED_ORIGINS env var
+// CORS — Manual implementation for reliable Vercel serverless support.
+// The cors package can fail on Vercel because OPTIONS preflight requests
+// may not flow through Express middleware correctly in serverless mode.
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",")
   : ["http://localhost:5173"];
 
-app.use(
-  cors({
-    origin: allowedOrigins,
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  }
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
+
+  // Respond to preflight immediately — no DB or auth needed
+  if (req.method === "OPTIONS") {
+    res.status(200).end();
+    return;
+  }
+
+  next();
+});
 
 // JSON body parser — parses incoming JSON request bodies
 // limit: "10mb" allows larger payloads (default is 100kb)
@@ -75,7 +84,7 @@ app.use(express.urlencoded({ extended: true }));
 // ── Database Connection Middleware ───────────────────────────
 // Ensures MongoDB is connected before handling any API request.
 // On Vercel serverless, this runs per-request (cached after first connect).
-// CORS and OPTIONS are handled above — they don't need the DB.
+// CORS headers are already set above, so errors here are readable by the browser.
 app.use("/api", async (_req, res, next) => {
   try {
     await connectDB();
