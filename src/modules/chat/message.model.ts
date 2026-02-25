@@ -34,7 +34,7 @@
 // ============================================================
 
 import mongoose, { Schema } from "mongoose";
-import { IMessage, MessageRole } from "../../types";
+import { IMessage, MessageRole } from "../../types/index.js";
 
 const messageSchema = new Schema(
   {

@@ -36,7 +36,7 @@
 //   2. SEARCHING: New message → embedding → search Pinecone for similar past conversations
 // ============================================================
 
-import ai, { EMBEDDING_MODEL, EMBEDDING_DIMENSIONS } from "../config/gemini";
+import ai, { EMBEDDING_MODEL, EMBEDDING_DIMENSIONS } from "../config/gemini.js";
 
 /**
  * Generate an embedding for a SINGLE text string.

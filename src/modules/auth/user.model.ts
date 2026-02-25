@@ -30,7 +30,7 @@
 
 import mongoose, { Schema } from "mongoose";
 import bcrypt from "bcryptjs";
-import { IUser } from "../../types";
+import { IUser } from "../../types/index.js";
 
 const userSchema = new Schema(
   {

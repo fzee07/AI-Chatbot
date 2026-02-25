@@ -33,9 +33,9 @@
 // ============================================================
 
 import { Router } from "express";
-import * as chatController from "./chat.controller";
-import { protect } from "../../middlewares/auth";
-import { chatLimiter } from "../../middlewares/rateLimiter";
+import * as chatController from "./chat.controller.js";
+import { protect } from "../../middlewares/auth.js";
+import { chatLimiter } from "../../middlewares/rateLimiter.js";
 
 const router = Router();
 

@@ -42,11 +42,11 @@
 // ============================================================
 
 import { v4 as uuidv4 } from "uuid";
-import { getPineconeIndex } from "../../config/pinecone";
-import { generateEmbedding, generateEmbeddings } from "../../utils/embeddings";
-import Message from "./message.model";
-import Conversation from "./conversation.model";
-import { IMessage, MemorySearchResult } from "../../types";
+import { getPineconeIndex } from "../../config/pinecone.js";
+import { generateEmbedding, generateEmbeddings } from "../../utils/embeddings.js";
+import Message from "./message.model.js";
+import Conversation from "./conversation.model.js";
+import { IMessage, MemorySearchResult } from "../../types/index.js";
 
 // ── Constants ───────────────────────────────────────────────
 

@@ -32,7 +32,7 @@
 // ============================================================
 
 import jwt from "jsonwebtoken";
-import User from "./user.model";
+import User from "./user.model.js";
 
 /**
  * Generate a JWT token for an authenticated user.

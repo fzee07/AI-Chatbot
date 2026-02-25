@@ -30,7 +30,7 @@
 // ============================================================
 
 import mongoose, { Schema } from "mongoose";
-import { IConversation, ChatRole } from "../../types";
+import { IConversation, ChatRole } from "../../types/index.js";
 
 const conversationSchema = new Schema(
   {

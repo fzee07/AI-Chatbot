@@ -37,10 +37,10 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import express from "express";
-import connectDB from "./config/db";
-import authRoutes from "./modules/auth/auth.routes";
-import chatRoutes from "./modules/chat/chat.routes";
-import { authLimiter } from "./middlewares/rateLimiter";
+import connectDB from "./config/db.js";
+import authRoutes from "./modules/auth/auth.routes.js";
+import chatRoutes from "./modules/chat/chat.routes.js";
+import { authLimiter } from "./middlewares/rateLimiter.js";
 
 // Create the Express application instance
 const app = express();

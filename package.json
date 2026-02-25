@@ -2,12 +2,12 @@
   "name": "ai-chatbot-memory",
   "version": "1.0.0",
   "description": "",
+  "type": "module",
   "main": "dist/app.js",
   "scripts": {
     "build": "tsc",
-    "vercel-build": "esbuild src/app.ts --bundle --platform=node --target=node20 --format=esm --outfile=api/index.mjs --banner:js=\"import{createRequire}from'module';const require=createRequire(import.meta.url);\"",
     "start": "node dist/app.js",
-    "dev": "nodemon --watch src --ext ts --exec ts-node src/app.ts"
+    "dev": "nodemon --watch src --ext ts --exec 'node --import dotenv/config --import tsx src/app.ts'"
   },
   "keywords": [],
   "author": "",
@@ -34,6 +34,7 @@
     "esbuild": "^0.27.3",
     "nodemon": "^3.1.14",
     "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   }
 }

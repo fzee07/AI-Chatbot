@@ -24,15 +24,15 @@
 // ============================================================
 
 import { Response } from "express";
-import ai, { CHAT_MODEL } from "../../config/gemini";
-import Conversation from "./conversation.model";
-import Message from "./message.model";
-import { ChatRole, IConversation, IMessage } from "../../types";
+import ai, { CHAT_MODEL } from "../../config/gemini.js";
+import Conversation from "./conversation.model.js";
+import Message from "./message.model.js";
+import { ChatRole, IConversation, IMessage } from "../../types/index.js";
 import {
   archiveToLongTermMemory,
   searchLongTermMemory,
   getShortTermContext,
-} from "./memory.service";
+} from "./memory.service.js";
 
 // ── System Prompts (Role-Based AI Personalities) ─────────────
 // Each role gets a different "system prompt" — instructions that

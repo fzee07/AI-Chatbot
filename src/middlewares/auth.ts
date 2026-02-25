@@ -33,8 +33,8 @@
 
 import { Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
-import User from "../modules/auth/user.model";
-import { AuthRequest } from "../types";
+import User from "../modules/auth/user.model.js";
+import { AuthRequest } from "../types/index.js";
 
 /**
  * Protect middleware — verifies JWT token and attaches user to request.

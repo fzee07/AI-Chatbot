@@ -36,12 +36,12 @@
 // ============================================================
 
 import { Response } from "express";
-import * as chatService from "./chat.service";
+import * as chatService from "./chat.service.js";
 import {
   AuthRequest,
   CreateConversationBody,
   SendMessageBody,
-} from "../../types";
+} from "../../types/index.js";
 
 // ── Conversation CRUD Handlers ───────────────────────────────
 
